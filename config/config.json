@@ -1,0 +1,12 @@
+{
+  "Models": [
+      "sumehr_example.kmehr"
+  ],
+  "Tools": ["reference"],
+  "ChangeSets": [
+    "single"
+  ],
+  "Mutants": 1,
+  "Runs": 3,
+  "Timeout": 600
+}

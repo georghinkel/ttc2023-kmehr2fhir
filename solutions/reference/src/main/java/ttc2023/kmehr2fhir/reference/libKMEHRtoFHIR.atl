@@ -1,0 +1,345 @@
+-- @atlcompiler emftvm
+-- @nsURI KMEHR=http://www.ehealth.fgov.be/standards/kmehr/schema/v1
+-- @nsURI FHIR=http://hl7.org/fhir
+library libKMEHRtoFHIR;
+
+helper def : randomUUID() : String =
+	"#native"!"java::util::UUID".refInvokeStaticOperation('randomUUID', Sequence{}).toString();
+
+--- Returns a random UUID for self.
+helper context OclAny def : uuid : String =
+	thisModule.randomUUID();
+
+--- Returns the first element, or OclUndefined if self is empty.
+helper context Sequence(OclAny) def : firstOrOclUndefined() : OclAny =
+	if self->notEmpty() then
+		self->first()
+	else
+		OclUndefined
+	endif;
+
+--- Joins a Sequence of Strings into one String concatenated together with the given glue String.
+helper context Sequence(String) def : join(glue : String) : String =
+	self->iterate(s; acc: String = '' |
+		if acc = '' then
+			s
+		else
+			acc + glue + s
+		endif
+	);
+
+--- Removes all whitespace that is not a space from the string, replaces it with a single space, and
+--- trims any leading or trailing spaces.
+helper context String def : normalize() : String =
+	self.trim().replaceAll('(\t|\n| )+', ' ');
+
+helper def : xmlTypeFactory : "#native"!"org::eclipse::emf::ecore::xml::type::XMLTypeFactory" =
+	"#native"!"org::eclipse::emf::ecore::xml::type::impl::XMLTypeFactoryImpl".refInvokeStaticOperation('init', Sequence{});
+
+helper def : genderMap : Map(KMEHR!CDSEXvalues, FHIR!AdministrativeGenderEnum) =
+	Map{
+		(#changed, #other),
+		(#female, #female),
+		(#male, #male),
+		(#unknown, #unknown),
+		(#undefined, #other)
+	};
+
+helper def : relationshipMap : Map(String, String) =
+	Map{
+		('mother', 'MTH'),
+		('father', 'FTH'),
+		('child', 'CHILD'),
+		('familymember', 'FAMMEMB'),
+		('spouse', 'SPS'),
+		('husband', 'HUSB'),
+		('partner', 'DOMPART'),
+		('other', 'thirdParty'),
+		('brother', 'BRO'),
+		('sister', 'SIS'),
+		('brotherinlaw', 'BROINLAW'),
+		('tutor', 'thirdParty'),
+		('notary', 'thirdParty'),
+		('lawyer', 'thirdParty'),
+		('employer', 'thirdParty'),
+		('grandparent', 'GRPRN'),
+		('son', 'SON'),
+		('daugher', 'DAU'),
+		('grandchild', 'GRNDCHILD'),
+		('neighbour', 'NBOR'),
+		('stepson', 'STPSON'),
+		('stepdaughter', 'STPDAU'),
+		('stepfather', 'STPFTH'),
+		('stepmother', 'STPMTH'),
+		('sisterinlaw', 'SISINLAW')
+	};
+
+-- TODO review against http://unitsofmeasure.org
+helper def : unitsOfMeasureMap : Map(KMEHR!CDADMINISTRATIONUNITvalues, String) =
+	Map{
+		(#"00001", '5 ml'),
+		(#"00002", 'amp.'),
+		(#"00003", 'applic.'),
+		(#"00004", 'caps.'),
+		(#"00005", 'compr.'),
+		(#"00006", 'dosis'),
+		(#"00007", 'drops'),
+		(#"00008", 'flac.'),
+		(#"00009", 'implant'),
+		(#"00010", 'perfusion'),
+		(#"00011", 'inhal.'),
+		(#"00012", 'insert'),
+		(#"00013", 'chewing gum'),
+		(#"00014", 'Compress(es)'),
+		(#"00015", 'lav.'),
+		(#"00016", 'ml'),
+		(#"00017", 'ov.'),
+		(#"00018", 'pearl(s)'),
+		(#"00019", 'pastille'),
+		(#"00020", 'patch'),
+		(#"00021", 'cart.'),
+		(#"00022", 'pen'),
+		(#"00023", 'puff(s)'),
+		(#"00024", 'sponge'),
+		(#"00025", 'stylo'),
+		(#"00026", 'suppo'),
+		(#"00027", 'tube'),
+		(#"00028", 'wick'),
+		(#"00029", 'bag'),
+		(#"00030", 'bag(s)'),
+		(#cm, 'cm'),
+		(#dropsperminute, 'drp/min'),
+		(#gm, 'g'),
+		(#internationalunits, 'international units'),
+		(#"mck/h", 'mg/h'),
+		(#"mck/kg/minute", 'mg/kg/min'),
+		(#measure, 'measure'),
+		(#"mg/h", 'mg/h'),
+		(#"ml/h", 'ml/h'),
+		(#tbl, 'tablespoon'),
+		(#tsp, 'teaspoon'),
+		(#"unt/h", 'units/h'),
+		(#mg, 'mg'),
+		(#"mg/ml", 'mg/ml'),
+		(#meq, 'milli-equivalent'),
+		(#miu, 'miu'),
+		(#iu, 'iu'),
+		(#mmol, 'mmol'),
+		(#"effervescent-tablet", 'effervescent tablet'),
+		(#micrograms, 'micrograms'),
+		(#bandage, 'bandage'),
+		(#piece, 'piece'),
+		(#box, 'box'),
+		(#liter, 'l'),
+		(#syringe, 'syringe'),
+		(#ampoule, 'ampoule'),
+		(#bottle, 'bottle'),
+		(#"syringe-ampoule", 'syringe ampoule')
+	};
+
+helper def : dayPeriodMap : Map(KMEHR!CDDAYPERIODvalues, FHIR!EventTimingEnumtring) =
+	Map{
+		(#afterbreakfast, #PCM),
+		(#afterdinner, #PCV),
+		(#afterlunch, #PCD),
+		(#aftermeal, #PC),
+		(#afternoon, #AFT),
+		(#beforebreakfast, #ACM),
+		(#beforedinner, #ACV),
+		(#beforelunch, #ACD),
+		(#betweenbreakfastandlunch, #PCM),
+		(#betweendinnerandsleep, #PCV),
+		(#betweenlunchanddinner, #PCD),
+		(#betweenmeals, #PC),
+		(#evening, #EVE),
+		(#morning, #MORN),
+		(#night, #NIGHT),
+		(#thehourofsleep, #HS),
+		(#duringbreakfast, #CM),
+		(#duringlunch, #CD),
+		(#duringdinner, #CV)
+	};
+
+--- Converts a KMEHR!CDSEXvalues value to a FHIR!AdministrativeGenderEnum value.
+helper context KMEHR!CDSEXvalues def : toGender : FHIR!AdministrativeGenderEnum =
+	thisModule.genderMap.get(self);
+
+--- Converts a KMEHR!CDADMINISTRATIONUNIT value to a http://unitsofmeasure.org value.
+helper context KMEHR!CDADMINISTRATIONUNIT def : toUnitsOfMeasureValue : String =
+	if self.value.oclIsUndefined() then
+		OclUndefined
+	else
+		thisModule.unitsOfMeasureMap.get(self.value)
+	endif;
+
+--- Converts a KMEHR!CDDAYPERIODvalues value to a FHIR!EventTimingEnum value.
+helper context KMEHR!CDDAYPERIOD def : toEventTiming : FHIR!EventTimingEnum =
+	if self.value.oclIsUndefined() then
+		OclUndefined
+	else
+		thisModule.dayPeriodMap.get(self.value)
+	endif;
+
+--- Returns the message sender or OclUndefined.
+helper context OclAny def : msgSender : KMEHR!HcpartyType =
+	OclUndefined;
+
+--- Returns the transaction author or OclUndefined.
+helper context KMEHR!TransactionType def : txAuthor : KMEHR!HcpartyType =
+	self.author.txAuthor;
+
+--- Returns the transaction author or OclUndefined.
+helper context KMEHR!AuthorType def : txAuthor : KMEHR!HcpartyType =
+	self.hcparty->firstOrOclUndefined();
+
+--- Returns the KMEHR!HcpartyType of self or OclUndefined.
+helper context KMEHR!ItemType def : hcpartyContent : KMEHR!HcpartyType =
+	self.content
+		->reject(c | c.hcparty.oclIsUndefined())
+		->collect(c | c.hcparty)
+		->firstOrOclUndefined();
+
+--- Returns 'true' if self represents an organization.
+helper context KMEHR!HcpartyType def : isOrganization : Boolean =
+	self.cd->exists(cd | cd.isOrganization);
+
+--- Returns 'true' if self represents an organization.
+helper context KMEHR!CDHCPARTY def : isOrganization : Boolean =
+	not self.value.oclIsUndefined() and self.value.startsWith('org');
+
+--- Returns 'true' if self represents an practitioner.
+helper context KMEHR!HcpartyType def : isPractitioner : Boolean =
+	self.cd->exists(cd | cd.isPractitioner);
+
+--- Returns 'true' if self represents an practitioner.
+helper context KMEHR!CDHCPARTY def : isPractitioner : Boolean =
+	not self.value.oclIsUndefined() and self.value.startsWith('pers');
+
+helper context KMEHR!AddressType def : addressLine : String =
+	Sequence{self.street, self.housenumber, self.postboxnumber}
+		->reject(s | s.oclIsUndefined() or s = '')
+		->join(' ');
+
+--- Returns the country string value for self, or OclUndefined.
+helper context OclAny def : countryString : String =
+	OclUndefined;
+		
+--- Returns the country string value for self, or OclUndefined.
+helper context KMEHR!AddressType def : countryString : String =
+	self.country.countryString;
+
+--- Returns the country string value for self, or OclUndefined.
+helper context KMEHR!CountryType def : countryString : String =
+	self.cd.countryString;
+
+--- Returns the country string value for self, or OclUndefined.
+helper context KMEHR!CDCOUNTRY def : countryString : String =
+	self.value.countryString;
+
+--- Returns the country string value for self, or OclUndefined.
+helper context String def : countryString : String =
+	self.toUpper();
+
+--- Returns the telecom system string or OclUndefined.
+helper context KMEHR!TelecomType def : system : String =
+	let systemStr : String =
+		self.cd->select(cd | cd.s = #"CD-TELECOM")->collect(cd | cd.value)->firstOrOclUndefined()
+	in
+	if systemStr = 'phone' then
+		#phone
+	else if systemStr = 'mobile' then
+		#mobile
+	else if systemStr = 'fax' then
+		#fax
+	else if systemStr = 'email' then
+		#email
+	else
+		#other
+	endif endif endif endif;
+
+--- Returns the FHIR!ContactPointUseEnum value or OclUndefined.
+helper context KMEHR!TelecomType def : contactPointUse : FHIR!ContactPointUseEnum =
+	if self.cd->exists(cd | cd.s = #"CD-TELECOM" and cd.value = 'phone') then
+		if self.refImmediateComposite().oclIsKindOf(KMEHR!PersonType) then
+			#home
+		else
+			#work
+		endif
+	else if self.cd->exists(cd | cd.s = #"CD-TELECOM" and cd.value = 'mobile') then
+		#mobile
+	else
+		OclUndefined
+	endif endif;
+
+--- Returns 'true' if self represents a contact person.
+helper context KMEHR!ItemType def : isContactPerson : Boolean =
+	self.cd->exists(cd | cd.s = #"CD-ITEM" and cd.value = 'contactperson');
+
+--- Returns 'true' if self represents a contact person.
+helper context KMEHR!ItemType def : contactPersonRelationships : Sequence(KMEHR!CDITEM) =
+	self.cd->select(cd | cd.s = #"CD-CONTACT-PERSON");
+
+--- Returns 'true' if self represents medication.
+helper context KMEHR!ItemType def : isMedication : Boolean =
+	self.cd->exists(cd | cd.s = #"CD-ITEM" and cd.value = 'medication');
+
+--- Returns 'true' if self represents an allergy.
+helper context KMEHR!ItemType def : isAllergy : Boolean =
+	self.cd->exists(cd | cd.s = #"CD-ITEM" and cd.value = 'allergy');
+
+--- Returns 'true' if self represents an intolerance.
+helper context KMEHR!ItemType def : isIntolerance : Boolean =
+	self.cd->exists(cd | cd.s = #"CD-ITEM" and cd.value = 'adr');
+
+--- Returns 'true' if self represents an active problem.
+helper context KMEHR!ItemType def : isActiveProblem : Boolean =
+	self.cd->exists(cd | cd.s = #"CD-ITEM" and cd.value = 'problem') and
+	self.lifecycle.cd.value = #active;
+
+--- Returns 'true' if self represents an active problem.
+helper context KMEHR!ItemType def : isInactiveProblem : Boolean =
+	self.cd->exists(cd | cd.s = #"CD-ITEM" and cd.value = 'problem') and
+	self.lifecycle.cd.value = #inactive;
+
+--- Returns 'true' if self represents a vaccine.
+helper context KMEHR!ItemType def : isVaccine : Boolean =
+	self.cd->exists(cd | cd.s = #"CD-ITEM" and cd.value = 'vaccine');
+
+--- Returns the FHIR reference string prefix for self.
+helper context KMEHR!ItemType def : refPrefix : String =
+	if self.isMedication then
+		'Medication/'
+	else if self.isAllergy or self.isIntolerance then
+		'AllergyIntolerance/'
+	else if self.isActiveProblem or self.isInactiveProblem then
+		'Condition/'
+	else if self.isVaccine then
+		'Immunization/'
+	else
+		'Unknown/'
+	endif endif endif endif;
+
+--- Returns the intende CNK code for self, or OclUndefined.
+helper context KMEHR!MedicinalProductType def : intendedCNKCode : String =
+	self.intendedcd
+		->select(cd | cd.s = #"CD-DRUG-CNK")
+		->collect(cd | cd.value)
+		->firstOrOclUndefined();
+
+--- Returns the coding system URI for self, or OclUndefined.
+helper context KMEHR!CDCONTENT def : codingSystem : String =
+	if self.s = #ICPC and self.sV = '2' then
+		'http://hl7.org/fhir/sid/icpc-2'
+	else if self.s = #ICD and self.sV = '10' then
+		'http://hl7.org/fhir/sid/icd-10'
+	else
+		OclUndefined
+	endif endif;
+
+--- Returns the KMEHR!CDCONTENT for self that have a known codingSystem.
+helper context KMEHR!ItemType def : codedContent : Sequence(KMEHR!CDCONTENT) =
+	self.content->collect(c | c.cd->reject(cd | cd.codingSystem.oclIsUndefined()))->flatten();
+
+--- Returns the KMEHR!CDCONTENT for self that are instances of CD-VACCINEINDICATION.
+helper context KMEHR!ItemType def : vaccineIndication : Sequence(KMEHR!CDCONTENT) =
+	self.content->collect(c | c.cd->select(cd | cd.s = #"CD-VACCINEINDICATION"))->flatten();
