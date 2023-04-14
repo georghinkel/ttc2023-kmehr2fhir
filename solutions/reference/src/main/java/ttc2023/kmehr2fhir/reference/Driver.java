@@ -18,8 +18,8 @@ import be.fgov.ehealth.standards.kmehr.schema.kmehr.util.KmehrResourceFactoryImp
 
 /**
  * This class is not part of any solutions: it's just a utility for running the
- * original transformation that produces the reference DocBook document, which
- * is later mutated.
+ * original transformation that produces the reference document, which is later
+ * mutated.
  */
 public class Driver {
 
