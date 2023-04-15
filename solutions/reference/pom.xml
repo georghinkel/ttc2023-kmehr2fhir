@@ -45,6 +45,37 @@
 					</execution>
 				</executions>
 			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-antrun-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>Compile ATL files</id>
+						<phase>compile</phase>
+						<goals>
+							<goal>run</goal>
+						</goals>
+						<configuration>
+							<tasks>
+								<taskdef
+									resource="org/eclipse/m2m/atl/emftvm/ant/antlib.xml"
+									classpathref="maven.plugin.classpath" />
+								<mkdir dir="${project.build.directory}" />
+								<emftvm.compile	outputpath="${project.build.directory}/classes/ttc2023/kmehr2fhir/reference/" charset="UTF-8">
+									<moduleset dir="${project.basedir}/src/main/java/ttc2023/kmehr2fhir/reference" includes="*.atl" />
+								</emftvm.compile>
+							</tasks>
+						</configuration>
+					</execution>
+				</executions>
+				<dependencies>
+					<dependency>
+						<groupId>org.eclipse.m2m.atl</groupId>
+						<artifactId>org.eclipse.m2m.atl.emftvm.ant.standalone</artifactId>
+						<version>${atl.version}</version>
+					</dependency>
+				</dependencies>
+			</plugin>
 		</plugins>
 	</build>
 
