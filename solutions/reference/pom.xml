@@ -61,8 +61,12 @@
 									resource="org/eclipse/m2m/atl/emftvm/ant/antlib.xml"
 									classpathref="maven.plugin.classpath" />
 								<mkdir dir="${project.build.directory}" />
-								<emftvm.compile	outputpath="${project.build.directory}/classes/ttc2023/kmehr2fhir/reference/" charset="UTF-8">
-									<moduleset dir="${project.basedir}/src/main/java/ttc2023/kmehr2fhir/reference" includes="*.atl" />
+								<emftvm.compile
+									outputpath="${project.build.directory}/classes/ttc2023/kmehr2fhir/reference/"
+									charset="UTF-8">
+									<moduleset
+										dir="${project.basedir}/src/main/java/ttc2023/kmehr2fhir/reference"
+										includes="*.atl" />
 								</emftvm.compile>
 							</tasks>
 						</configuration>
@@ -75,6 +79,11 @@
 						<version>${atl.version}</version>
 					</dependency>
 				</dependencies>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<version>3.0.0</version>
 			</plugin>
 		</plugins>
 	</build>
@@ -107,9 +116,9 @@
 
 	<dependencies>
 		<dependency>
-			<groupId>junit</groupId>
-			<artifactId>junit</artifactId>
-			<version>3.8.1</version>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter-engine</artifactId>
+			<version>5.9.2</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
