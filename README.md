@@ -1,6 +1,6 @@
 # The TTC 2023 KMEHR to FHIR case
 
-![Java CI with Maven](https://github.com/dwagelaar/ttc2023-kmehr2fhir/actions/workflows/maven.yml/badge.svg)
+![Python CI](https://github.com/dwagelaar/ttc2023-kmehr2fhir/actions/workflows/python-build.yml/badge.svg)
 
 ## Case description
 
