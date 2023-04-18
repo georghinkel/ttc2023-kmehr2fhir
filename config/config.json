@@ -4,10 +4,6 @@
       "sumehr_example10.kmehr"
   ],
   "Tools": ["reference"],
-  "ChangeSets": [
-    "single"
-  ],
-  "Mutants": 1,
   "Runs": 3,
   "Timeout": 600
 }

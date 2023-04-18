@@ -92,7 +92,7 @@ def visualize():
     subprocess.call(["Rscript", "visualize.R", os.path.join(BASE_DIRECTORY, "config", "reporting.json")])
 
 
-def extract_results():
+def extract_results(conf):
     """
     Extracts the benchmark results
     """
@@ -142,7 +142,7 @@ if __name__ == "__main__":
     if args.visualize:
         visualize()
     if args.extract:
-        extract_results()
+        extract_results(config)
 
     # if there are no args, execute a full sequence
     # with the test and the visualization/reporting
@@ -151,4 +151,4 @@ if __name__ == "__main__":
         build(config, False)
         benchmark(config)
         visualize()
-        extract_results()
+        extract_results(config)

@@ -45,6 +45,10 @@ public class Transformation {
 		return kmehrRoot;
 	}
 
+	public Resource getOutputResource() {
+		return outputResource;
+	}
+
 	private void init() {
 		rs.getResourceFactoryRegistry().getExtensionToFactoryMap().put("emftvm", new EMFTVMResourceFactoryImpl());
 		td = new TimingData();
@@ -74,9 +78,5 @@ public class Transformation {
 
 		env.run(td);
 		td.finish();
-	}
-
-	public Resource getOutputResource() {
-		return outputResource;
 	}
 }

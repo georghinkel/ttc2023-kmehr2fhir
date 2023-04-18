@@ -126,11 +126,17 @@ public class Driver {
 		}
 
 		final long memoryUsed = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+		if (outputResource != null && !outputResource.getContents().isEmpty()) {
+			final org.hl7.emf.fhir.DocumentRoot documentRoot = (org.hl7.emf.fhir.DocumentRoot) outputResource
+					.getContents().get(0);
+			System.out.println(String.format("%s;%s;%s;%s;%s;%s;%s", tool, fKmehr.getName(), fFhir.getName(), runIndex,
+					phase.toString(), "Entries", Integer.toString(documentRoot.getBundle().getEntry().size())));
+		}
 		System.out.println(
-				String.format("%s;%s;%s;%s;%s;%s", tool, fKmehr.getName(), runIndex, phase.toString(),
-						"Runtime (ns)", Long.toString(stopwatch)));
-		System.out.println(String.format("%s;%s;%s;%s;%s;%s", tool, fKmehr.getName(), runIndex, phase.toString(),
-				"Memory used (b)", Long.toString(memoryUsed)));
+				String.format("%s;%s;%s;%s;%s;%s;%s", tool, fKmehr.getName(), fFhir.getName(), runIndex,
+						phase.toString(), "Runtime (ns)", Long.toString(stopwatch)));
+		System.out.println(String.format("%s;%s;%s;%s;%s;%s;%s", tool, fKmehr.getName(), fFhir.getName(), runIndex,
+				phase.toString(), "Memory used (b)", Long.toString(memoryUsed)));
 	}
 
 	enum BenchmarkPhase {
