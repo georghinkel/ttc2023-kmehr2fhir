@@ -26,6 +26,8 @@ public class Driver {
 	private final File fKmehr, fFhir;
 	private DocumentRoot kmehrFile;
 	private Resource outputResource;
+	private String tool;
+	private String runIndex;
 
 	public Driver(final File fKmehr, final File fFhir) {
 		this.fKmehr = fKmehr;
@@ -77,11 +79,16 @@ public class Driver {
 		outputResource = repository.createResource(uri);
 		outputResource.getContents().clear();
 
+		solution = new Transformation(kmehrFile, outputResource);
+
 		stopwatch = System.nanoTime() - stopwatch;
 		report(BenchmarkPhase.Load);
 	}
 
 	private void initialize() throws Exception {
+		tool = System.getenv("Tool");
+		runIndex = System.getenv("RunIndex");
+
 		stopwatch = System.nanoTime();
 
 		repository = new ResourceSetImpl();
@@ -100,7 +107,6 @@ public class Driver {
 	private void run() throws IOException {
 		stopwatch = System.nanoTime();
 
-		solution = new Transformation(kmehrFile, outputResource);
 		solution.run();
 
 		stopwatch = System.nanoTime() - stopwatch;
@@ -120,7 +126,11 @@ public class Driver {
 		}
 
 		final long memoryUsed = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
-		System.out.println(String.format("Phase %s run in %s ns, using %s bytes of memory", phase.toString(), Long.toString(stopwatch), Long.toString(memoryUsed)));
+		System.out.println(
+				String.format("%s;%s;%s;%s;%s;%s", tool, fKmehr.getName(), runIndex, phase.toString(),
+						"Runtime (ns)", Long.toString(stopwatch)));
+		System.out.println(String.format("%s;%s;%s;%s;%s;%s", tool, fKmehr.getName(), runIndex, phase.toString(),
+				"Memory used (b)", Long.toString(memoryUsed)));
 	}
 
 	enum BenchmarkPhase {

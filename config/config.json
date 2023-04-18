@@ -1,6 +1,7 @@
 {
   "Models": [
-      "sumehr_example.kmehr"
+      "sumehr_example.kmehr",
+      "sumehr_example10.kmehr"
   ],
   "Tools": ["reference"],
   "ChangeSets": [

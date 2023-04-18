@@ -27,21 +27,27 @@ public class Transformation {
 	private static final String OUT_METAMODEL = "FHIR";
 	private static final String IN_METAMODEL = "KMEHR";
 	private static final String MODULE_NAME = "KMEHRtoFHIR";
+
 	private final DocumentRoot kmehrRoot;
 	private final Resource outputResource;
+	private final ExecEnv env = EmftvmFactory.eINSTANCE.createExecEnv();
+	private final ResourceSet rs = new ResourceSetImpl();
+
+	private TimingData td;
 
 	public Transformation(final DocumentRoot kmehrRoot, final Resource outputResource) {
 		this.kmehrRoot = kmehrRoot;
 		this.outputResource = outputResource;
+		init();
 	}
 
 	public DocumentRoot getKmehrRoot() {
 		return kmehrRoot;
 	}
 
-	public void run() {
-		final ExecEnv env = EmftvmFactory.eINSTANCE.createExecEnv();
-		final ResourceSet rs = new ResourceSetImpl();
+	private void init() {
+		rs.getResourceFactoryRegistry().getExtensionToFactoryMap().put("emftvm", new EMFTVMResourceFactoryImpl());
+		td = new TimingData();
 
 		final Metamodel kmehrMetamodel = EmftvmFactory.eINSTANCE.createMetamodel();
 		kmehrMetamodel.setResource(KmehrPackage.eINSTANCE.eResource());
@@ -51,9 +57,13 @@ public class Transformation {
 		fhirMetamodel.setResource(FhirPackage.eINSTANCE.eResource());
 		env.registerMetaModel(OUT_METAMODEL, fhirMetamodel);
 
-		// loading models
-		rs.getResourceFactoryRegistry().getExtensionToFactoryMap().put("emftvm", new EMFTVMResourceFactoryImpl());
+		final ModuleResolver mr = new ClassModuleResolver(Transformation.class);
+		env.loadModule(mr, MODULE_NAME);
 
+		td.finishLoading();
+	}
+
+	public void run() {
 		final Model inModel = EmftvmFactory.eINSTANCE.createModel();
 		inModel.setResource(kmehrRoot.eResource());
 		env.registerInputModel("IN", inModel);
@@ -62,10 +72,6 @@ public class Transformation {
 		outModel.setResource(outputResource);
 		env.registerOutputModel("OUT", outModel);
 
-		final ModuleResolver mr = new ClassModuleResolver(Transformation.class);
-		final TimingData td = new TimingData();
-		env.loadModule(mr, MODULE_NAME);
-		td.finishLoading();
 		env.run(td);
 		td.finish();
 	}
