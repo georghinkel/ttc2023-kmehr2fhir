@@ -1,7 +1,14 @@
 Tool;Source;Target;RunIndex;PhaseName;MetricName;MetricValue
 reference;sumehr_example.kmehr;output.fhir;0;Run;Entries;25
+reference;sumehr_example1000.kmehr;output.fhir;2;Run;Entries;21004
 reference;sumehr_example10.kmehr;output.fhir;0;Run;Entries;214
+reference;sumehr_example100.kmehr;output.fhir;0;Run;Entries;2104
+reference;sumehr_example1000.kmehr;output.fhir;0;Run;Entries;21004
 reference;sumehr_example.kmehr;output.fhir;1;Run;Entries;25
 reference;sumehr_example10.kmehr;output.fhir;1;Run;Entries;214
+reference;sumehr_example100.kmehr;output.fhir;1;Run;Entries;2104
+reference;sumehr_example1000.kmehr;output.fhir;1;Run;Entries;21004
 reference;sumehr_example.kmehr;output.fhir;2;Run;Entries;25
 reference;sumehr_example10.kmehr;output.fhir;2;Run;Entries;214
+reference;sumehr_example100.kmehr;output.fhir;2;Run;Entries;2104
+reference;sumehr_example1000.kmehr;output.fhir;2;Run;Entries;21004

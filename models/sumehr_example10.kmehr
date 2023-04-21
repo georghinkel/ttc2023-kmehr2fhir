@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--SUMEHR-example 1.X revised to fit with sumehr 2.0 specification.December 2016 -
 Only for demonstration purpose: no valuable medical content
--->
+Size multiplier: 10-->
 <kmehrmessage
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xmlns="http://www.ehealth.fgov.be/standards/kmehr/schema/v1"

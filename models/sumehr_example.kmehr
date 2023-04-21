@@ -500,7 +500,7 @@ Only for demonstration purpose: no valuable medical content
 				</beginmoment>
 			</item>
 			<item>
-				<id S="ID-KMEHR" SV="1.0">21</id>
+				<id S="ID-KMEHR" SV="1.0">22</id>
 				<cd S="CD-ITEM" SV="1.11">allergy</cd>
 				<content>
 					<cd S="ICPC" SV="2" DN="Allergy" L="en">A92</cd>

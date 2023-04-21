@@ -1,7 +1,9 @@
 {
   "Models": [
       "sumehr_example.kmehr",
-      "sumehr_example10.kmehr"
+      "sumehr_example10.kmehr",
+      "sumehr_example100.kmehr",
+      "sumehr_example1000.kmehr"
   ],
   "Tools": ["reference"],
   "Runs": 3,
