@@ -1,0 +1,323 @@
+\documentclass[a4paper]{scrartcl}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{rotating}
+
+\title{The TTC 2023 KMEHR to FHIR Case}
+\author{
+  Dennis Wagelaar\\
+  dwagelaar@gmail.com
+}
+
+\usepackage{tikz}
+\usepackage{graphicx}
+
+\usepackage[pdftex,colorlinks=true]{hyperref}
+
+\usepackage{listings}
+\lstset{columns=flexible}
+
+\newcommand*{\class}[1]{\textsc{#1}}
+\newcommand*{\feature}[1]{\emph{#1}}
+\newcommand*{\file}[1]{\texttt{#1}}
+
+%ATL language highlighting
+\lstdefinelanguage{atl}
+  {morekeywords={module, create, from, to, using, mapsTo, rule, helper, refining,
+                 context, def, if, then, else, endif, library, and, or, not, query, do},
+   sensitive=false,
+   morecomment=[l]{--}}
+
+%Standard listing style
+\lstset{basicstyle=\ttfamily\small,keywordstyle=\sffamily\small\textbf}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+The history of medical information systems has seen many twists and turns, and 
+while there has long been a global standardization body in the form of HL7, it 
+only recently gained a lot of traction with the FHIR standard. As a result, a 
+number of countries have developed their own medical data interchange formats 
+over the years, which now need to be realigned with the global FHIR medical 
+data interchange format. One such example is the Belgian KMEHR format. 
+For this TTC case, we will focus on a specific kind of medical data 
+interchange, namely the Patient Summarized Medical Record. In KMEHR, this is 
+called the Summarized Electronic Health Record (SumEHR). In FHIR, this is 
+called the International Patient Summary (IPS). The primary purpose of such a 
+record is to provide an emergency ``cheat sheet'' to healthcare providers who 
+don't normally see the patient in question, e.g. a hospital's emergency 
+department. Especially when a patient is abroad, the capability to exchange 
+such data is important, as it will often be the only source of medical 
+background data. This TTC case will require you to translate between the 
+Belgian SumEHR format and the international FHIR IPS format.
+\end{abstract}
+
+\section{Introduction}
+
+This Transformation Tool Contest case concerns the transformation between two
+medical data interchange formats: the Belgian ``Kindly Marked-up Electonic
+Healthcare Record'' (KMEHR) standard~\cite{kmehr_2023}, and the international
+``Fast Healthcare Interoperability Resources'' (FHIR) standard by Health Level
+7 (HL7)~\cite{fhir_2023}.
+
+For this TTC case, we will focus on a specific kind of medical data 
+interchange, namely the Patient Summarized Medical Record. In KMEHR, this is 
+called the Summarized Electronic Health Record (SumEHR)~\cite{sumehr_2016}.
+In FHIR, this is called the International Patient Summary
+(IPS)~\cite{fhirips_2022}. The primary purpose of a Patient Summarized Medical
+Record is to provide an emergency reference sheet to healthcare providers who 
+don't normally see the patient in question, e.g. a hospital's emergency 
+department, or a different doctor than your regular doctor.
+Especially when a patient is abroad, the capability to exchange 
+such data is important, as it will often be the only source of medical 
+background data.
+
+All resources for this case are available on
+Github\footnote{\url{https://github.com/dwagelaar/ttc2023-kmehr2fhir}}.
+Please follow the link in the footnote and create a pull request with your own
+solution.
+
+The rest of the document is structured as follows:
+Section~\ref{sec:case-structure} describes the structure of the KMEHR to FHIR 
+case. Section~\ref{sec:task-description} describes the proposed tasks for this
+case. Section~\ref{sec:benchmark-framework} mentions the benchmark framework for
+those solutions that focus on raw performance. Finally,
+Section~\ref{sec:evaluation} mentions an outline of the initial audience-based
+evaluation across all solutions, and the approach that will be followed to
+derive additional prizes depending on the attributes targeted by the solutions.
+
+\section{Case Structure}
+\label{sec:case-structure}
+
+The case is intended to review the different approaches for bridging the gap
+between two medical data standards, KMEHR and FHIR, that use vastly different
+document structures and medical code systems. The metamodels for
+KMEHR and FHIR have been automatically generated from their published XML 
+schemas\footnote{FHIR canonically uses JSON
+representation, but the standard also provides an XML representation.}
+using the EMF XSD generator\footnote{\url{https://help.eclipse.org/latest/index.jsp?topic=\%2Forg.eclipse.emf.doc\%2Ftutorials\%2Fxlibmod\%2Fxlibmod.html}}. The
+resulting metamodels are too large to include in this paper, but they can
+be viewed online at the
+``kmehr-emf''\footnote{\url{https://github.com/dwagelaar/kmehr-emf}} and
+``fhir-xml-emf''\footnote{\url{https://github.com/dwagelaar/fhir-xml-emf}}
+Github projects.
+
+The reference transformation is written in ATL/EMFTVM~\cite{conf/models/Wagelaar2011}
+and comprises approximately 1300 lines of code, divided over the main \texttt{KMEHRtoFHIR.atl}
+transformation module and the \texttt{libKMEHRtoFHIR.atl} helper library. Both
+of these files can be found in the aforementioned case Github repository. It uses
+advanced features of the EMFTVM runtime, such as multiple rule inheritance and
+invocation of native Java code. It also relies on the local search compiler
+included with the upcoming 4.8.0 release of ATL, which allows for efficient
+execution of matched rules with many input element. For example, the Posology
+rule shown in~\ref{lst:posologyRule} uses four input elements, which would
+require iterating four times through the entire input model before ATL 4.8.0.
+As of ATL 4.8.0, the filter expressions on lines 7--9 are translated by the compiler
+into local search expressions for the \texttt{tx}, \texttt{i}, and \texttt{s} input
+elements. Only the \texttt{f} input element needs to be found by iterating over
+the entire input model.
+
+\begin{lstlisting}[
+  float,frame=tb,numbers=left,
+  breaklines,language=atl,mathescape,
+  caption=Posology rule,label={lst:posologyRule}
+]
+rule Posology {
+	from
+		f : KMEHR!FolderType,
+		tx : KMEHR!TransactionType,
+		i : KMEHR!ItemType,
+		s : KMEHR!PosologyType (
+			i.posology = s and
+			tx.item->includes(i) and
+			f.transaction->includes(tx) and
+			i.isMedication)
+	to
+		t : FHIR!MedicationStatement mapsTo s (
+			id <- msid,
+			medication <- medCodRef,
+			status <- msstatus,
+			subject <- subRef,
+			effectivePeriod <- effectivePeriod,
+			dosage <- Sequence{dosage}),
+		msid : FHIR!Id (
+			value <- s.uuid),
+		medCodRef : FHIR!CodeableReference (
+			reference <- medRef),
+		medRef : FHIR!Reference (
+			reference <- thisModule.FhirString('Medication/' + i.uuid)),
+		msstatus : FHIR!MedicationStatementStatusCodes (
+			value <- #recorded),
+		subRef : FHIR!Reference (
+			reference <- thisModule.FhirString('Patient/' + f.patient.uuid)),
+		effectivePeriod : FHIR!Period (
+			start <- thisModule.FhirDateTime(i.beginmoment),
+			end <- thisModule.FhirDateTime(i.endmoment)),
+		dosage : FHIR!Dosage (
+			timing <- timing),
+		timing : FHIR!Timing (
+			repeat <- repeat),
+		repeat : FHIR!TimingRepeat (
+			count <- thisModule.FhirPositiveInt(i.dayperiod->size()),
+			periodUnit <- periodUnit,
+			when <- i.dayperiod->collect(dp | thisModule.EventTiming(dp))),
+		periodUnit : FHIR!UnitsOfTime (
+			value <- #d)
+}
+\end{lstlisting}
+
+The transformation translates a SumEHR document, which is effectively a KMEHR
+document with a header and a folder that contains a administrative patient
+data and a ``sumehr'' type transaction. The sumehr transaction contains a
+number of items of the following types:
+
+\begin{itemize}
+\item \textbf{gmdmanager}: the doctor that is responsible for keeping the
+  patient's main medical record up-to-date.
+\item \textbf{contactperson}: a key contact person of the patient, such
+  as a family member or employer.
+\item \textbf{socialrisk}: a health-related risk originating from the
+  patient's social context.
+\item \textbf{risk}: a health-related general risk for the patient.
+\item \textbf{problem}: an ongoing condition the patient suffers from,
+  or -- if inactive -- a historic condition.
+\item \textbf{medication}: currently prescribed medication for the patient.
+\item \textbf{vaccine}: a vaccine/immunization the patient has received
+  in the past.
+\item \textbf{adr}: an adverse drug reaction that the patient suffers from.
+\item \textbf{allergy}: an allergy the patient suffers from.
+\end{itemize}
+
+More types of information could be included in both SumEHR and FHIR IPS, but
+for the purpose of the TTC case, the types are limited to the ones listed. In
+addition, the reference model transformation does not (fully) translate between
+the medical coding systems used in KMEHR and FHIR for the sake of simplicity,
+and simply embeds the KMEHR medical codes within the FHIR document.
+Submissions to this case should follow the same strategy.
+
+\section{Task Description}
+\label{sec:task-description}
+
+There is a mandatory task and an optional task in this case:
+
+\begin{itemize}
+\item The mandatory task is to re-implement or improve the original
+  transformation itself, in a way that lends itself better to after-the-fact
+  consistency checking. Your transformation tool may have better support for
+  this, or ATL could be made to deal better with larger versions of this model.
+
+\item The optional task is to define the reverse transformation that translates
+  the generated FHIR IPS document back to SumEHR.
+\end{itemize}
+
+Solutions can focus on efficiency, conciseness, or clarity of presentation to
+the user. Clarity of presentation is key for this kind of transformation, as
+domain experts must typically validate the correctness of the transformation
+logic by reviewing the code.
+
+\section{Benchmark Framework}
+\label{sec:benchmark-framework}
+
+If focusing on performance, the solution authors should integrate their solution
+with the provided benchmark framework. It is based on that of the TTC 2017 Smart
+Grid case~\cite{hinkel_ttc_2017}, and supports the automated build and execution
+of solutions. For this specific case study, the visualisation of the results is
+currently disabled.
+
+The benchmark consists of three phases:
+
+\begin{enumerate}
+\item \textbf{Initialization}, which involves setting up the basic
+  infrastructure (e.g. loading metamodels). These measurements are optional.
+\item \textbf{Load}, which loads the input models.
+\item \textbf{Run}, which runs the consistency checking, finding a number of
+  consistency violations in the mutated DocBook model.
+\end{enumerate}
+
+\subsection{Solution requirements}
+\label{sec:solut-requ}
+
+Solutions should be forks of the main Github
+project\footnote{\url{https://github.com/dwagelaar/ttc2023-kmehr2fhir}},
+and should be submitted as pull requests.
+
+Each solution wishing to use the benchmarking framework should print to the
+standard output a line with the following fields, separated by semicolons
+(``;''):
+
+\begin{itemize}
+\item \textbf{Tool}: name of the tool.
+\item \textbf{Source}: base name of the input KMEHR model (e.g.\ ``sumehr\_example10.kmehr'').
+\item \textbf{Target}: base name of the output FHIR model (e.g.\ ``output.fhir'').
+\item \textbf{RunIndex}: index of the run of this combination of tools and inputs.
+\item \textbf{PhaseName}: name of the phase being run. It may be \textbf{Initialization},
+  \textbf{Load}, or \textbf{Run}.
+\item \textbf{MetricName}: the name of the metric. It may be the
+  \textbf{Memory used (b)} in bytes, the wall clock \textbf{Runtime (ns)} spent in integer
+  nanoseconds, or the number of Bundle \textbf{Entries} found in the
+  output FHIR model.
+\end{itemize}
+
+\lstinputlisting[
+  float,frame=tb,numbers=left,
+  caption={\file{solution.ini} file for the reference ATL solution},
+  label=lst:ini-atl,
+  basicstyle=\ttfamily\small
+]{../../solutions/reference/solution.ini}
+
+To enable automatic execution by the benchmark framework, solutions should add a
+subdirectory to the \file{solutions} folder of the benchmark with a
+\file{solution.ini} file stating how the solution should be built and how it
+should be run. As an example, the \file{solution.ini} file for the reference
+solution is shown on Listing~\ref{lst:ini-atl}. In the \file{build} section, the
+\file{default} option specifies the command to build and test the solution, and
+the \file{skipTests} option specifies the command to build the solution while
+skipping unit tests. In the \file{run} section, the \file{cmd} option specifies
+the command to run the solution.
+
+The repetition of executions as defined in the benchmark configuration is done
+by the benchmark. For 3 runs, the specified command will be called 3 times,
+passing any required information (e.g. run index, or input model name) through
+environment variables. Solutions must not save intermediate data between
+different runs: each run should be entirely independent.
+
+The name and absolute path of the input model, the run index and the name of the
+tool are passed using environment variables \file{Tool}, \file{SourcePath},
+\file{TargetPath}, and \file{RunIndex}.
+Solution authors are suggested to study the reference solution on how to use
+these values to run their transformation.
+
+\subsection{Running the benchmark}
+\label{sec:running-benchmark}
+
+The benchmark framework only requires Python 3.3 to be installed. Furthermore,
+the solutions may imply additional frameworks. We would ask solution authors to
+explicitly note dependencies to additional frameworks necessary to run their
+solutions.
+
+If all prerequisites are fulfilled, the benchmark can be run using Python with
+the command \file{python scripts/run.py}. Additional options can be queried
+using the option \file{{-}{-}help}. The benchmark framework can be configured
+through the \file{config/config.json} file: this includes the input models to be
+evaluated (some of which have been excluded by default due to their high cost
+with the sample solution), the names of the tools to be run, the number of runs
+per tool+model, and the timeout for each command in milliseconds.
+
+\section{Evaluation}
+\label{sec:evaluation}
+
+The evaluation will operate on several dimensions:
+
+\begin{itemize}
+\item How efficient is the approach in time and space (memory)?
+
+\item How understandable is the transformation code for domain experts to review and validate?
+\end{itemize}
+
+\bibliographystyle{plain}
+\bibliography{bibliography}
+
+\end{document}
