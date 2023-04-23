@@ -4,15 +4,19 @@
 
 ## Case description
 
-TODO
+The `docs/case` directory contains the [case description](https://raw.githubusercontent.com/dwagelaar/ttc2023-kmehr2fhir/main/docs/case/case-description.pdf).
 
 ## Prerequisites
 
-TODO
+* 64-bit operating system
+* Python 3.3 or higher
+* R
 
 ## Solution Prerequisites
 
-TODO
+* ATL: You need to install a recent [Eclipse IDE](https://www.eclipse.org/downloads/) and [ATL](https://www.eclipse.org/atl/)
+
+Add your prerequisites here!
 
 ## Using the framework
 
