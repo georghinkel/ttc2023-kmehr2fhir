@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "nmf": {
+      "commandName": "Project",
+      "commandLineArgs": "sumehr_example.kmehr sumehr_example_my.fhir",
+      "workingDirectory": "C:\\Users\\hinkel\\source\\repos\\ttc2023-kmehr2fhir\\models"
+    }
+  }
+}
